@@ -1,31 +1,17 @@
-# zerotask-rust-lib-template
+# conventional-commits-changelog-generator
 
-[![docs_master_badge]][docs_master_url]
+[![Maintenance](https://img.shields.io/badge/maintenance-actively%20maintained-brightgreen.svg)](https://github.com/conventional-commits-rs/conventional-commits-changelog-generator)
+[![crates.io](https://img.shields.io/crates/v/conventional-commits-changelog-generator.svg)](https://crates.io/crates/conventional-commits-changelog-generator)
+[![crates.io](https://img.shields.io/crates/d/conventional-commits-changelog-generator)](https://crates.io/crates/conventional-commits-changelog-generator)
+[![Documentation](https://docs.rs/conventional-commits-changelog-generator/badge.svg)](https://docs.rs/conventional-commits-changelog-generator)
 
-> A GitHub template for Rust libraries.
+> A CLI and library for generating the changelog based on conventional commits.
 
-> __NOTE:__ PLEASE change the name inside the license files!!!
+## Installation
 
-## Features
-
-- Continuous Integration through GitHub Actions
-  - Each PR is tested by running the following commands to ensure that only working code is added to the repository:
-    - `cargo fmt` to ensure uniform source code formatting.
-    - `cargo clippy` to use more idiomic Rust code, optimize code as well as prevent hard to spot bugs.
-    - `cargo check` to ensure that the library compiles properly.
-    - `cargo test` to ensure that the library works as expected.
-  - Each push to master triggers the following:
-    - Generation of the newest documentation that gets pushed to the `gh-pages` branch.
-- MSRV (**M**inimal **s**upported **R**ust **v**ersion)
-  - Kept in sync with the latest available Rust version on Ubuntu.
-- Opinioded `rustfmt` configuration file.
-- Misc
-  - `.editorconfig` file for code-unrelated files.
-    - Ensures proper formatting for workflow files and other configuration files.
-
-## Current Properties
-
-- MSRV: 1.41.0
+```text
+cargo install conventional-commits-changelog-generator --locked
+```
 
 ## License
 
@@ -42,6 +28,3 @@ at your option.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
-
-[docs_master_badge]: https://img.shields.io/badge/docs.rs-master-green
-[docs_master_url]: https://<username>.github.io/<reponame>
