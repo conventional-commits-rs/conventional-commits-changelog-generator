@@ -1,6 +1,9 @@
 [package]
-name = "zerotask-rust-lib-template"
-version = "0.1.0"
+name = "conventional-commits-changelog-generator"
+description = "A CLI and library for generating the changelog based on conventional commits."
+version = "0.0.0"
 license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/conventional-commits-rs/conventional-commits-changelog-generator"
 authors = ["Sven Lechner <SirWindfield@users.noreply.github.com>"]
 edition = "2018"
