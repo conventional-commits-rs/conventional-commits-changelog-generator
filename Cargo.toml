@@ -8,13 +8,20 @@ repository = "https://github.com/conventional-commits-rs/conventional-commits-ch
 authors = ["Sven Lechner <SirWindfield@users.noreply.github.com>"]
 edition = "2018"
 
+[[bin]]
+name = "changelog"
+path = "src/bin/changelog.rs"
+
 [dependencies]
-conventional-commits-parser = "0.1.0"
-git2 = "0.13.8"
-markdown-composer = "0.1.0"
-semver = "0.10.0"
-conventional-commits-next-semver = "0.1.1"
 chrono = "0.4.13"
+conventional-commits-next-semver = "0.1.1"
+conventional-commits-parser = "0.1.1"
+git2 = "0.13.8"
+indoc = "1.0.2"
+markdown-composer = "0.1.0"
+pico-args = { version = "0.3.4", default-features = false }
+semver = "0.10.0"
 
 [patch.crates-io]
+conventional-commits-parser = { path = "../conventional-commits-parser" }
 markdown-composer = { path = "../markdown-composer" }

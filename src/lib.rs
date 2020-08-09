@@ -1,39 +1,25 @@
+use crate::github::github_link_for_commit;
+use crate::github::github_link_for_issue;
+use crate::github::github_link_for_range;
+use crate::utils::pairwise;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use git2::Repository;
-use markdown_composer::{Link, MarkdownBuilder};
+use markdown_composer::traits::MarkdownElement;
+use markdown_composer::transforms::Bold;
+use markdown_composer::PRELIMINARY_REMARK;
+use markdown_composer::{Link, List, Markdown};
 use semver::SemVerError;
 use semver::Version;
 use std::cmp::Ordering;
 use std::error::Error;
 
-fn pairwise<I, J>(right: I) -> impl Iterator<Item = (I::Item, I::Item)>
-where
-    I: IntoIterator<Item = J> + Clone,
-    J: std::fmt::Display,
-{
-    let left = right.clone().into_iter();
-    let right = right.into_iter().skip(1);
-    left.zip(right)
-}
+mod github;
+mod utils;
 
-fn github_link_between_tags(from: &str, to: &str) -> String {
-    format!(
-        "https://github.com/SirWindfield/cargo-create/compare/{}...{}",
-        from, to
-    )
-}
-
-fn github_link_for_commit(hash: &str) -> String {
-    format!(
-        "https://github.com/SirWindfield/cargo-create/commit/{}",
-        hash
-    )
-}
-
-pub fn generate_changelog(repo: &Repository) -> Result<String, Box<dyn Error>> {
-    // Walk between each version and collect the commits to analyse.
+pub fn generate_changelog(repo: &Repository) -> Result<Markdown, Box<dyn Error>> {
+    // Get a list of all git tags inside the repository that match the `vX.X.X` pattern.
     let tag_names = repo.tag_names(Some("v*"))?;
-    // Map tags to semver versions.
+    // Map those tags to valid semantic versions by stripping the prefix `v`. The tuple contains the original tag alongside the semantic version.
     let mut tag_to_semver_mapped: Vec<(&str, Version)> = tag_names
         .iter()
         .flatten()
@@ -47,44 +33,70 @@ pub fn generate_changelog(repo: &Repository) -> Result<String, Box<dyn Error>> {
         .flatten()
         .collect::<Vec<_>>();
 
-    // Sort by semver specification.
+    // Sort the above vector by their semantic version, thus re-ordering the git tags by their version instead of their creation date.
     tag_to_semver_mapped.sort_by(|a, b| {
         if a.0 == "HEAD" {
             return Ordering::Greater;
         }
         a.1.cmp(&b.1)
     });
+    // Create a new vector that only contains the git tag name references.
     let tag_names = tag_to_semver_mapped
         .iter()
         .map(|(tag, _)| tag)
         .collect::<Vec<_>>();
+    // Extract the latest git tag, which will be at the end of the sorted vector.
     let latest_tag = tag_names[tag_names.len() - 1];
 
+    // Create pairs of git tags, from a lower version to a higher version. This allows to create git diffs between tags later on.`
     let tag_range_pairs = pairwise(tag_names)
         .chain(std::iter::once((latest_tag, &"HEAD")))
         .collect::<Vec<_>>();
-    let mut changelog = MarkdownBuilder::new();
 
+    // Create a new Markdown file.
+    let mut changelog = Markdown::new();
+
+    // Add the header and notice at the top of the file.
+    changelog.header1("Changelog");
+    //let mut remark = (&*PRELIMINARY_REMARK).to_vec();
+    for line in &*PRELIMINARY_REMARK {
+        changelog.paragraph(line.render());
+    }
+    //changelog.elements.append(&mut remark);
+
+    // For each git tag pair...
     for (from, to) in tag_range_pairs.into_iter().rev() {
-        let diff_link = github_link_between_tags(from, to);
-        let diff_link = Link::new(*to, diff_link);
-        let mut rendered_diff_link = format!("{}", diff_link);
-        let to_date = repo.resolve_reference_from_short_name(to)?;
-        let date = if to_date.is_tag() {
-            let tag = to_date.peel_to_commit()?;
+        // Create the link that can be used to get a diff view of the tag range.
+        let diff_link = github_link_for_range(from, to);
+        let diff_link = Link::builder().text(*to).url(diff_link).inlined().build();
+        let mut rendered_diff_link = diff_link.render();
+
+        // Extract the date of the git tag which will then be displayed next to the version header.
+        let to_tag_ref = repo.resolve_reference_from_short_name(to)?;
+        // The branch is needed as the last `to` will contain `HEAD` and resolve to a branch commit.
+        let to_tag_date_string = if to_tag_ref.is_tag() {
+            let tag = to_tag_ref.peel_to_commit()?;
+
+            // Create a date string based on UTC.
             let time = tag.time();
             let time = NaiveDateTime::from_timestamp(time.seconds(), 0);
             let time: DateTime<Utc> = DateTime::from_utc(time, Utc);
-            let in_string = time.format("%Y-%m-%d");
-            rendered_diff_link.push_str(&format!(" ({})", in_string));
-        } else if to_date.is_branch() && *to == "HEAD" {
-            // Just use the current date and time.
+
+            time.format("%Y-%m-%d").to_string()
+        } else if to_tag_ref.is_branch() && *to == "HEAD" {
+            // In the case that the `to` points to the current HEAD, the current date will be returned.
             let time: DateTime<Utc> = Utc::now();
-            let in_string = time.format("%Y-%m-%d");
-            rendered_diff_link.push_str(&format!(" ({})", in_string));
+            time.format("%Y-%m-%d").to_string()
+        //rendered_diff_link.push_str(&format!(" ({})", in_string));
+        } else {
+            String::with_capacity(0)
         };
+        if !rendered_diff_link.is_empty() {
+            rendered_diff_link.push_str(&format!(" ({})", to_tag_date_string));
+        }
+
+        // Calculate the level of the version header.
         let stripped = to.trim_start_matches('v');
-        println!("{}", stripped);
         let level: usize = if stripped == "HEAD" {
             1
         } else {
@@ -95,8 +107,9 @@ pub fn generate_changelog(repo: &Repository) -> Result<String, Box<dyn Error>> {
                 2
             }
         };
-        changelog.header(&rendered_diff_link, level);
+        changelog.header(rendered_diff_link, level);
 
+        // Get all commits between the current two tags.
         let rev = format!("{}..{}", from, to);
         let commits = conventional_commits_next_semver::git_commits_in_range(repo, &rev)?;
         let commits = commits
@@ -105,71 +118,91 @@ pub fn generate_changelog(repo: &Repository) -> Result<String, Box<dyn Error>> {
             .filter_map(Result::ok)
             .collect::<Vec<_>>();
 
+        // Map all commits to a tuple of (GitCommit, ParsedCommit).
         let parsed_messages = commits
             .iter()
-            .map(|c| c.message())
-            .filter_map(|msg| msg)
-            .map(|msg| conventional_commits_parser::parse_commit_msg(msg))
-            .filter_map(Result::ok)
+            .map(|c| {
+                if let Some(msg) = c.message() {
+                    let parsed_msg = conventional_commits_parser::parse_commit_msg(msg);
+                    if let Ok(parsed_msg) = parsed_msg {
+                        return Some((c, parsed_msg));
+                    }
+                }
+
+                None
+            })
+            .filter_map(|t| t)
             .collect::<Vec<_>>();
 
-        let (fixes, other): (
-            Vec<&conventional_commits_parser::Commit>,
-            Vec<&conventional_commits_parser::Commit>,
-        ) = parsed_messages
+        // Partition to get a list of bug fixes and feature related commits.
+        let (fixes, other): (Vec<_>, Vec<_>) = parsed_messages
             .iter()
-            .partition(|parsed| parsed.ty == "fix");
-        let (features, other): (
-            Vec<&conventional_commits_parser::Commit>,
-            Vec<&conventional_commits_parser::Commit>,
-        ) = other.iter().partition(|parsed| parsed.ty == "feat");
+            .partition(|(_, parsed)| parsed.ty == "fix");
+        let (features, _other): (
+            Vec<&(&git2::Commit, conventional_commits_parser::Commit)>,
+            Vec<&(&git2::Commit, conventional_commits_parser::Commit)>,
+        ) = other.iter().partition(|(_, parsed)| parsed.ty == "feat");
 
-        // Add all bug fixes.
-        if !fixes.is_empty() {
-            let mut list = markdown_composer::List::new();
-            for p in fixes {
-                let item = match p.scope {
-                    Some(scope) => format!("{}: {}", scope, p.desc),
+        fn populate_changelog_from_commits(
+            commits: Vec<&(&git2::Commit, conventional_commits_parser::Commit)>,
+        ) -> Result<List, Box<dyn Error>> {
+            let mut list = List::unordered();
+
+            // For each commit...
+            for (commit, p) in commits {
+                // If a scope is present, make it bold and combine it with the commit description.
+                let mut item = match p.scope {
+                    Some(scope) => format!("{}: {}", scope.bold(), p.desc),
                     None => p.desc.to_string(),
                 };
-                list.add(item);
-            }
-            list.unordered();
 
-            changelog.header3("Bug Fixes");
-            changelog.list(list);
+                // Additional information that can be appended to a changelog line. Currently issue number and the commit hash.
+                let mut additions = Vec::with_capacity(2);
+                let short_hash = commit.as_object().short_id()?;
+                let short_hash = short_hash.as_str().unwrap();
+                let hash_link = Link::builder()
+                    .text(short_hash)
+                    .url(github_link_for_commit(&commit.id().to_string()))
+                    .inlined()
+                    .build();
+
+                additions.push(format!("({})", hash_link));
+
+                // If the footer contains fixes or closes, add them as well.
+                for footer in &p.footer {
+                    match footer.token {
+                        "Fixes" | "Closes" => {
+                            let issue_link = Link::builder()
+                                .text(format!("#{}", footer.value))
+                                .url(github_link_for_issue(footer.value))
+                                .inlined()
+                                .build();
+                            additions.push(format!(", closes {}", issue_link));
+                        }
+                        _ => {}
+                    }
+                }
+
+                if !additions.is_empty() {
+                    let joined_additions = format!(" {}", additions.join(" "));
+                    item.push_str(&joined_additions);
+                }
+
+                list.add(Box::new(item));
+            }
+
+            Ok(list)
         }
 
-        // Followed by all new features.
         if !features.is_empty() {
-            let mut list = markdown_composer::List::new();
-            for p in features {
-                let item = match p.scope {
-                    Some(scope) => format!("{}: {}", scope, p.desc),
-                    None => p.desc.to_string(),
-                };
-                list.add(item);
-            }
-            list.unordered();
-
             changelog.header3("Features");
-            changelog.list(list);
+            changelog.list(populate_changelog_from_commits(features)?);
+        }
+        if !fixes.is_empty() {
+            changelog.header3("Bug Fixes");
+            changelog.list(populate_changelog_from_commits(fixes)?);
         }
     }
 
-    println!("{}", changelog);
-
-    // // Walk over every commit of the current HEAD.
-    // let mut revwalk = repo.revwalk()?;
-    // revwalk.push_head()?;
-
-    // // TODO: can we pre-allocate the vec already?
-    // let mut commits_to_consider = Vec::new();
-    // for res in revwalk {
-    //     let oid = res?;
-    //     let commit = repo.find_commit(oid)?;
-    //     commits_to_consider.push(commit);
-    // }
-
-    Ok("".into())
+    Ok(changelog)
 }
