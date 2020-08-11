@@ -21,6 +21,10 @@ indoc = "1.0.2"
 markdown-composer = "0.1.0"
 pico-args = { version = "0.3.4", default-features = false }
 semver = "0.10.0"
+inventory = "0.1.7"
+url = "2.1.1"
+cargo_toml = "0.8.1"
+thiserror = "1.0.20"
 
 [patch.crates-io]
 conventional-commits-parser = { path = "../conventional-commits-parser" }
