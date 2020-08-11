@@ -9,8 +9,10 @@
 
 ## Installation
 
+The library can be added to your project as usual. If you want to install the binary, then please run this command:
+
 ```text
-cargo install conventional-commits-changelog-generator --locked
+cargo install conventional-commits-changelog-generator --locked --features cli
 ```
 
 ## License
