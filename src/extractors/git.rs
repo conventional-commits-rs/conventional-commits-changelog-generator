@@ -54,7 +54,7 @@ impl Extractor for GitExtractor {
     }
 
     fn priority(&self) -> u8 {
-        0
+        200
     }
 
     fn is_applicable(&self, _repo_dir: &Path) -> bool {

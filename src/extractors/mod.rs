@@ -5,7 +5,7 @@ mod git;
 mod utils;
 
 /// The priority that should be used for extractors that rely on language specified files.
-pub const LANGUAGE_RELATED_PRIORITY: u8 = 200;
+pub const LANGUAGE_RELATED_PRIORITY: u8 = 50;
 
 /// Information about a remote repository.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
