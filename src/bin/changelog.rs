@@ -1,9 +1,7 @@
 use conventional_commits_changelog_generator::{generate_changelog, Error};
 use indoc::printdoc;
 use pico_args::Arguments;
-use std::env::current_dir;
-use std::fs;
-use std::process::exit;
+use std::{env::current_dir, fs, process::exit};
 
 const BINARY_NAME: &str = "changelog";
 const CHANGELOG_FILENAME: &str = "CHANGELOG.md";

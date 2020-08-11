@@ -1,6 +1,4 @@
-use crate::extractors::utils::extract_repo_from_url;
-use crate::extractors::Extractor;
-use crate::extractors::RepoInformation;
+use crate::extractors::{utils::extract_repo_from_url, Extractor, RepoInformation};
 use git2::{Remote, Repository};
 use std::path::Path;
 use thiserror::Error;

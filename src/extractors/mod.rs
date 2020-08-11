@@ -6,7 +6,8 @@ mod cargo;
 mod git;
 mod utils;
 
-/// The priority that should be used for extractors that rely on language specified files.
+/// The priority that should be used for extractors that rely on language
+/// specified files.
 pub const LANGUAGE_RELATED_PRIORITY: u8 = 50;
 
 /// Information about a remote repository.
@@ -38,12 +39,16 @@ pub trait Extractor {
     ///
     /// # Note
     ///
-    /// Extractors that implement logic for certain development environments (`cargo` for Rust, `npm` for Node) should implement a priority level of 25.
+    /// Extractors that implement logic for certain development environments
+    /// (`cargo` for Rust, `npm` for Node) should implement a priority level of
+    /// 25.
     fn priority(&self) -> u8;
 
-    /// Returns whether the executor is applicable to extract information from a repository.
+    /// Returns whether the executor is applicable to extract information from a
+    /// repository.
     ///
-    /// This method is mostly used to check for certain files that need to exist for information extraction.
+    /// This method is mostly used to check for certain files that need to exist
+    /// for information extraction.
     fn is_applicable(&self, repo_dir: &Path) -> bool;
 }
 
