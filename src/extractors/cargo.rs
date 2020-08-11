@@ -28,9 +28,7 @@ impl Extractor for CargoExtractor {
         let cargo_toml = Manifest::from_path(cargo_toml)?;
         match cargo_toml.package {
             Some(package_section) => match package_section.repository {
-                Some(url) => {
-                    return extract_repo_from_url(&url);
-                }
+                Some(url) => extract_repo_from_url(&url),
                 None => Err(Box::new(CargoError::NoRepositoryField)),
             },
             None => Err(Box::new(CargoError::NoPackageSection)),

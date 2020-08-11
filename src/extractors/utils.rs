@@ -21,24 +21,21 @@ pub fn extract_repo_from_url(url: &str) -> Result<RepoInformation, Box<dyn std::
                 if let Some(mut path_segments) = url.path_segments() {
                     let owner = path_segments.next();
                     let repo = path_segments.next();
-                    if owner.is_none() || repo.is_none() {
-                        return Err(Box::new(UrlExtractionError::ParseError));
-                    } else {
-                        // Safety: check has been done above.
-                        let repo = repo.unwrap();
-                        let repo = if let Some(repo) = repo.strip_suffix(".git") {
-                            repo
-                        } else {
-                            repo
+                    return match (owner, repo) {
+                        (Some(owner), Some(repo)) => {
+                            let repo = if let Some(repo) = repo.strip_suffix(".git") {
+                                repo
+                            } else {
+                                repo
+                            }
+                            .to_string();
+                            Ok(RepoInformation {
+                                owner: owner.to_string(),
+                                repo,
+                            })
                         }
-                        .to_string();
-
-                        return Ok(RepoInformation {
-                            // Safety: check has been done above.
-                            owner: owner.unwrap().to_string(),
-                            repo,
-                        });
-                    }
+                        _ => Err(Box::new(UrlExtractionError::ParseError)),
+                    };
                 }
             }
             _ => {
