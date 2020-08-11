@@ -1,6 +1,6 @@
-use crate::extractors::utils::extract_repo_from_url;
-use crate::extractors::LANGUAGE_RELATED_PRIORITY;
-use crate::extractors::{Extractor, RepoInformation};
+use crate::extractors::{
+    utils::extract_repo_from_url, Extractor, RepoInformation, LANGUAGE_RELATED_PRIORITY,
+};
 use cargo_toml::Manifest;
 use std::path::Path;
 use thiserror::Error;

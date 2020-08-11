@@ -1,21 +1,16 @@
 pub use crate::errors::Error;
-use crate::extractors::Extractor;
-use crate::extractors::RepoInformation;
-use crate::github::github_link_for_commit;
-use crate::github::github_link_for_issue;
-use crate::github::github_link_for_range;
-use crate::utils::pairwise;
+use crate::{
+    extractors::{Extractor, RepoInformation},
+    github::{github_link_for_commit, github_link_for_issue, github_link_for_range},
+    utils::pairwise,
+};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use git2::Repository;
-use markdown_composer::traits::MarkdownElement;
-use markdown_composer::transforms::Bold;
-use markdown_composer::PRELIMINARY_REMARK;
-use markdown_composer::{Link, List, Markdown};
-use semver::SemVerError;
-use semver::Version;
-use std::cmp::Ordering;
-use std::error::Error as StdError;
-use std::path::Path;
+use markdown_composer::{
+    traits::MarkdownElement, transforms::Bold, Link, List, Markdown, PRELIMINARY_REMARK,
+};
+use semver::{SemVerError, Version};
+use std::{cmp::Ordering, error::Error as StdError, path::Path};
 
 mod errors;
 mod extractors;
@@ -30,13 +25,15 @@ fn populate_changelog_from_commits(
 
     // For each commit...
     for (commit, p) in commits {
-        // If a scope is present, make it bold and combine it with the commit description.
+        // If a scope is present, make it bold and combine it with the commit
+        // description.
         let mut item = match p.scope {
             Some(scope) => format!("{}: {}", scope.bold(), p.desc),
             None => p.desc.to_string(),
         };
 
-        // Additional information that can be appended to a changelog line. Currently issue number and the commit hash.
+        // Additional information that can be appended to a changelog line. Currently
+        // issue number and the commit hash.
         let mut additions = Vec::with_capacity(2);
         let short_hash = commit.as_object().short_id()?;
         let short_hash = short_hash.as_str().unwrap();
@@ -85,9 +82,11 @@ pub fn generate_changelog(repo_dir: impl AsRef<Path>) -> Result<Markdown, Box<dy
     };
     let repo = repo.unwrap();
 
-    // Get a list of all git tags inside the repository that match the `vX.X.X` pattern.
+    // Get a list of all git tags inside the repository that match the `vX.X.X`
+    // pattern.
     let tag_names = repo.tag_names(Some("v*"))?;
-    // Map those tags to valid semantic versions by stripping the prefix `v`. The tuple contains the original tag alongside the semantic version.
+    // Map those tags to valid semantic versions by stripping the prefix `v`. The
+    // tuple contains the original tag alongside the semantic version.
     let mut tag_to_semver_mapped: Vec<(&str, Version)> = tag_names
         .iter()
         .flatten()
@@ -101,7 +100,8 @@ pub fn generate_changelog(repo_dir: impl AsRef<Path>) -> Result<Markdown, Box<dy
         .flatten()
         .collect::<Vec<_>>();
 
-    // Sort the above vector by their semantic version, thus re-ordering the git tags by their version instead of their creation date.
+    // Sort the above vector by their semantic version, thus re-ordering the git
+    // tags by their version instead of their creation date.
     tag_to_semver_mapped.sort_by(|a, b| {
         if a.0 == "HEAD" {
             return Ordering::Greater;
@@ -116,12 +116,14 @@ pub fn generate_changelog(repo_dir: impl AsRef<Path>) -> Result<Markdown, Box<dy
     // Extract the latest git tag, which will be at the end of the sorted vector.
     let latest_tag = tag_names[tag_names.len() - 1];
 
-    // Create pairs of git tags, from a lower version to a higher version. This allows to create git diffs between tags later on.`
+    // Create pairs of git tags, from a lower version to a higher version. This
+    // allows to create git diffs between tags later on.`
     let tag_range_pairs = pairwise(tag_names)
         .chain(std::iter::once((latest_tag, &"HEAD")))
         .collect::<Vec<_>>();
 
-    // Retrieve the needed metadata for the changelog from an applicable extractor implementation.
+    // Retrieve the needed metadata for the changelog from an applicable extractor
+    // implementation.
     let mut extractors = Vec::new();
     for extractor in inventory::iter::<&dyn Extractor> {
         extractors.push(extractor);
@@ -161,9 +163,11 @@ pub fn generate_changelog(repo_dir: impl AsRef<Path>) -> Result<Markdown, Box<dy
         let diff_link = Link::builder().text(*to).url(diff_link).inlined().build();
         let mut rendered_diff_link = diff_link.render();
 
-        // Extract the date of the git tag which will then be displayed next to the version header.
+        // Extract the date of the git tag which will then be displayed next to the
+        // version header.
         let to_tag_ref = repo.resolve_reference_from_short_name(to)?;
-        // The branch is needed as the last `to` will contain `HEAD` and resolve to a branch commit.
+        // The branch is needed as the last `to` will contain `HEAD` and resolve to a
+        // branch commit.
         let to_tag_date_string = if to_tag_ref.is_tag() {
             let tag = to_tag_ref.peel_to_commit()?;
 
@@ -174,7 +178,8 @@ pub fn generate_changelog(repo_dir: impl AsRef<Path>) -> Result<Markdown, Box<dy
 
             time.format("%Y-%m-%d").to_string()
         } else if to_tag_ref.is_branch() && *to == "HEAD" {
-            // In the case that the `to` points to the current HEAD, the current date will be returned.
+            // In the case that the `to` points to the current HEAD, the current date will
+            // be returned.
             let time: DateTime<Utc> = Utc::now();
             time.format("%Y-%m-%d").to_string()
         //rendered_diff_link.push_str(&format!(" ({})", in_string));
