@@ -1,5 +1,4 @@
-use conventional_commits_changelog_generator::generate_changelog;
-use git2::Repository;
+use conventional_commits_changelog_generator::{generate_changelog, Error};
 use indoc::printdoc;
 use pico_args::Arguments;
 use std::env::current_dir;
@@ -7,6 +6,7 @@ use std::fs;
 use std::process::exit;
 
 const BINARY_NAME: &str = "changelog";
+const CHANGELOG_FILENAME: &str = "CHANGELOG.md";
 
 /// The program's arguments.
 struct Args {
@@ -52,16 +52,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         print_help();
     } else {
         let current_folder = current_dir()?;
-        match Repository::open(&current_folder) {
-            Ok(repo) => {
-                let changelog = generate_changelog(&repo)?;
-                let changelog_file_path = current_folder.join("CHANGELOG.md");
+        let changelog = generate_changelog(&current_folder);
+        match changelog {
+            Ok(changelog) => {
+                let changelog_file_path = current_folder.join(CHANGELOG_FILENAME);
                 fs::write(changelog_file_path, changelog.render())?;
             }
-            Err(_) => {
-                eprintln!("No git repository in current working directory found!");
-                exit(1);
-            }
+            Err(e) => match e.downcast_ref::<Error>() {
+                Some(crate_error) => match crate_error {
+                    Error::NoGitRepository { path, .. } => {
+                        eprintln!("No git repository in current working directory found!");
+                        eprintln!("  {}", path);
+                        exit(1);
+                    }
+                },
+                None => {
+                    eprintln!("Other error: {}", e);
+                    exit(1);
+                }
+            },
         }
     }
 

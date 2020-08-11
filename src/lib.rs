@@ -1,3 +1,4 @@
+pub use crate::errors::Error;
 use crate::extractors::Extractor;
 use crate::extractors::RepoInformation;
 use crate::github::github_link_for_commit;
@@ -13,8 +14,10 @@ use markdown_composer::{Link, List, Markdown};
 use semver::SemVerError;
 use semver::Version;
 use std::cmp::Ordering;
-use std::error::Error;
+use std::error::Error as StdError;
+use std::path::Path;
 
+mod errors;
 mod extractors;
 mod github;
 mod utils;
@@ -22,7 +25,7 @@ mod utils;
 fn populate_changelog_from_commits(
     commits: Vec<&(&git2::Commit, conventional_commits_parser::Commit)>,
     repo_info: &RepoInformation,
-) -> Result<List, Box<dyn Error>> {
+) -> Result<List, Box<dyn StdError>> {
     let mut list = List::unordered();
 
     // For each commit...
@@ -71,8 +74,16 @@ fn populate_changelog_from_commits(
     Ok(list)
 }
 
-pub fn generate_changelog(repo: &Repository) -> Result<Markdown, Box<dyn Error>> {
-    // Extract the repository username and reponame from the origin remote.
+pub fn generate_changelog(repo_dir: impl AsRef<Path>) -> Result<Markdown, Box<dyn StdError>> {
+    let repo_dir_path = repo_dir.as_ref();
+    let repo = Repository::open(repo_dir_path);
+    if let Err(e) = repo {
+        return Err(Box::new(Error::NoGitRepository {
+            path: repo_dir_path.display().to_string(),
+            source: e,
+        }));
+    };
+    let repo = repo.unwrap();
 
     // Get a list of all git tags inside the repository that match the `vX.X.X` pattern.
     let tag_names = repo.tag_names(Some("v*"))?;
@@ -119,14 +130,9 @@ pub fn generate_changelog(repo: &Repository) -> Result<Markdown, Box<dyn Error>>
     extractors.sort_by_key(|e| e.priority());
     // TODO: proper error handling.
     let mut repo_info = None;
-    let repo_path = if repo.is_bare() {
-        repo.path().parent().unwrap()
-    } else {
-        repo.path()
-    };
     for extractor in extractors {
-        if extractor.is_applicable(repo_path) {
-            repo_info = match extractor.extract_repo_information(repo_path) {
+        if extractor.is_applicable(repo_dir_path) {
+            repo_info = match extractor.extract_repo_information(repo_dir_path) {
                 Ok(info) => Some(info),
                 Err(e) => {
                     eprintln!("error: {:?}", e);
@@ -195,7 +201,7 @@ pub fn generate_changelog(repo: &Repository) -> Result<Markdown, Box<dyn Error>>
 
         // Get all commits between the current two tags.
         let rev = format!("{}..{}", from, to);
-        let commits = conventional_commits_next_semver::git_commits_in_range(repo, &rev)?;
+        let commits = conventional_commits_next_semver::git_commits_in_range(&repo, &rev)?;
         let commits = commits
             .into_iter()
             .map(|oid| repo.find_commit(oid))
