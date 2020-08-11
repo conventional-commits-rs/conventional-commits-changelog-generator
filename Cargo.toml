@@ -11,20 +11,28 @@ edition = "2018"
 [[bin]]
 name = "changelog"
 path = "src/bin/changelog.rs"
+required-features = ["cli"]
 
 [dependencies]
 chrono = "0.4.13"
 conventional-commits-next-semver = "0.1.1"
 conventional-commits-parser = "0.1.1"
 git2 = "0.13.8"
-indoc = "1.0.2"
+indoc = { version = "1.0.2", optional = true }
 markdown-composer = "0.1.0"
-pico-args = { version = "0.3.4", default-features = false }
+pico-args = { version = "0.3.4", default-features = false, optional = true }
 semver = "0.10.0"
 inventory = "0.1.7"
 url = "2.1.1"
-cargo_toml = "0.8.1"
+cargo_toml = { version = "0.8.1", optional = true }
 thiserror = "1.0.20"
+
+[features]
+default = ["extractors"]
+cli = ["indoc", "pico-args"]
+extractors = ["extractor-cargo", "extractor-git"]
+extractor-cargo = ["cargo_toml"]
+extractor-git = []
 
 [patch.crates-io]
 conventional-commits-parser = { path = "../conventional-commits-parser" }

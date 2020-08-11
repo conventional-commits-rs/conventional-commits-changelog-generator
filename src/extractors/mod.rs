@@ -1,6 +1,8 @@
 use std::path::Path;
 
+#[cfg(feature = "extractor-cargo")]
 mod cargo;
+#[cfg(feature = "extractor-git")]
 mod git;
 mod utils;
 
