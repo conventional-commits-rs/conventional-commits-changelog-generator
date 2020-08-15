@@ -134,11 +134,13 @@ pub fn generate_changelog(repo_dir: impl AsRef<Path>) -> Result<Markdown, Box<dy
     let mut repo_info = None;
     for extractor in extractors {
         if extractor.is_applicable(repo_dir_path) {
-            repo_info = match extractor.extract_repo_information(repo_dir_path) {
-                Ok(info) => Some(info),
+            match extractor.extract_repo_information(repo_dir_path) {
+                Ok(info) => {
+                    repo_info = Some(info);
+                    break;
+                },
                 Err(e) => {
                     eprintln!("error: {:?}", e);
-                    None
                 }
             };
         }
