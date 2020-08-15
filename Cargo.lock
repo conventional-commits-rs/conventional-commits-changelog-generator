@@ -50,7 +50,7 @@ dependencies = [
 
 [[package]]
 name = "conventional-commits-changelog-generator"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "cargo_toml 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
